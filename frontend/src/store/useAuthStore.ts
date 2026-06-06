@@ -1,37 +1,45 @@
 import { create } from "zustand";
-import { User, RoleName } from "../../../shared/types/database";
+import type { User, RoleName } from "../../../shared/types/database";
 
 interface AuthState {
-  user: Partial<User> | null;
+  user: (Partial<User> & { role?: RoleName }) | null;
   accessToken: string | null;
   isAuthenticated: boolean;
-  login: (user: Partial<User>, token: string) => void;
+  login: (user: Partial<User> & { role?: RoleName }, token: string) => void;
   logout: () => void;
   hasRole: (roles: RoleName[]) => boolean;
 }
 
+const getInitialUser = (): (Partial<User> & { role?: RoleName }) | null => {
+  const storedUser = localStorage.getItem("user");
+  if (!storedUser) return null;
+  try {
+    return JSON.parse(storedUser);
+  } catch (e) {
+    return null;
+  }
+};
+
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  accessToken: null,
-  isAuthenticated: false,
-  
+  user: getInitialUser(),
+  accessToken: localStorage.getItem("token"),
+  isAuthenticated: !!localStorage.getItem("token"),
+
   login: (user, token) => {
     localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(user));
     set({ user, accessToken: token, isAuthenticated: true });
   },
-  
+
   logout: () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     set({ user: null, accessToken: null, isAuthenticated: false });
   },
-  
+
   hasRole: (roles) => {
     const currentUser = get().user;
-    if (!currentUser || !currentUser.role_id) return false;
-    
-    // In full implementation, we'll map role_id to role name.
-    // For now we assume user.role_id holds the role name string for testing convenience
-    const currentRole = currentUser.role_id as unknown as RoleName;
-    return roles.includes(currentRole);
-  }
+    if (!currentUser || !currentUser.role) return false;
+    return roles.includes(currentUser.role);
+  },
 }));
