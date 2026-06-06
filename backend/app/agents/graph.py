@@ -469,9 +469,6 @@ async def dispatcher_node(state: DispatchGraphState) -> DispatchGraphState:
                 existing_task.assignment_reasoning = reasoning_dict
                 state["task_id"] = str(existing_task.id)
 
-            await send_agent_log(circular_id_str, "Dispatcher", "[Dispatcher] Created operational task record in queue...", "INFO")
-            await asyncio.sleep(0.5)
-
             # Insert Notification record
             notify_obj = Notification(
                 id=uuid.uuid4(),
@@ -484,9 +481,6 @@ async def dispatcher_node(state: DispatchGraphState) -> DispatchGraphState:
             session.add(notify_obj)
             await session.flush()
             state["notification_id"] = str(notify_obj.id)
-
-            await send_agent_log(circular_id_str, "Dispatcher", f"[Dispatcher] Generated dashboard notification for head {department.head_name}...", "INFO")
-            await asyncio.sleep(0.5)
 
             # Verify if all maps for this regulation / circular are approved or rejected.
             # If yes, we can set the circular status to "Dispatched"!
@@ -508,8 +502,6 @@ async def dispatcher_node(state: DispatchGraphState) -> DispatchGraphState:
                 circ_res = await session.execute(circ_stmt)
                 circ_record = circ_res.scalar_one()
                 circ_record.status = "Dispatched"
-                await send_agent_log(circular_id_str, "Dispatcher", "[Dispatcher] All action items processed. Circular status updated to Dispatched.", "INFO")
-                await asyncio.sleep(0.3)
 
             await session.commit()
         except Exception as e:
@@ -518,6 +510,18 @@ async def dispatcher_node(state: DispatchGraphState) -> DispatchGraphState:
             await send_agent_log(circular_id_str, "Dispatcher", f"[Dispatcher] Error: {err}", "ERROR")
             state["errors"].append(err)
             return state
+
+    # 4. Stream operational progress logs sequentially after committing to avoid SQLite deadlocks
+    await send_agent_log(circular_id_str, "Dispatcher", "[Dispatcher] Created operational task record in queue...", "INFO")
+    await asyncio.sleep(0.5)
+
+    head_name = department.head_name if 'department' in locals() else "Department Head"
+    await send_agent_log(circular_id_str, "Dispatcher", f"[Dispatcher] Generated dashboard notification for head {head_name}...", "INFO")
+    await asyncio.sleep(0.5)
+
+    if 'all_reviewed' in locals() and all_reviewed:
+        await send_agent_log(circular_id_str, "Dispatcher", "[Dispatcher] All action items processed. Circular status updated to Dispatched.", "INFO")
+        await asyncio.sleep(0.3)
 
     await send_agent_log(circular_id_str, "Dispatcher", "[Dispatcher] Dispatch completed successfully.", "INFO")
 
