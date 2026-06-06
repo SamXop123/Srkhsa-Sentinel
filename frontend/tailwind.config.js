@@ -14,7 +14,12 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+        inter: ["Inter", "sans-serif"],
+      },
       colors: {
+        /* shadcn CSS variable-driven tokens */
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -48,6 +53,20 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+
+        /* SuRaksha Sentinel banking design tokens */
+        sentinel: {
+          navy: "#003366",
+          gold: "#FFD700",
+          success: "#10B981",
+          warning: "#F59E0B",
+          danger: "#EF4444",
+          bg: "#F0F4F8",
+          card: "#FFFFFF",
+          "text-primary": "#1E293B",
+          "text-secondary": "#64748B",
+          border: "#E2E8F0",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -63,10 +82,25 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "ticker-scroll": {
+          "0%": { transform: "translateX(100%)" },
+          "100%": { transform: "translateX(-100%)" },
+        },
+        "terminal-blink": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0" },
+        },
+        "pulse-dot": {
+          "0%, 100%": { opacity: "1", transform: "scale(1)" },
+          "50%": { opacity: "0.5", transform: "scale(1.3)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "ticker-scroll": "ticker-scroll 30s linear infinite",
+        "terminal-blink": "terminal-blink 1s step-end infinite",
+        "pulse-dot": "pulse-dot 1.5s ease-in-out infinite",
       },
     },
   },
