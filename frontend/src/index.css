@@ -4,34 +4,47 @@
 
 @layer base {
   :root {
-    --background: 224 71% 4%;
-    --foreground: 213 31% 91%;
+    /* ── SuRaksha Sentinel Design Tokens ── */
+    --sentinel-navy: #003366;
+    --sentinel-gold: #FFD700;
+    --sentinel-success: #10B981;
+    --sentinel-warning: #F59E0B;
+    --sentinel-danger: #EF4444;
+    --sentinel-bg: #F0F4F8;
+    --sentinel-card: #FFFFFF;
+    --sentinel-text-primary: #1E293B;
+    --sentinel-text-secondary: #64748B;
+    --sentinel-border: #E2E8F0;
 
-    --muted: 223 47% 11%;
-    --muted-foreground: 215.4 16.3% 56.9%;
+    /* ── shadcn / Radix CSS variable tokens (light theme) ── */
+    --background: 210 25% 96%;        /* #F0F4F8 */
+    --foreground: 215 28% 17%;        /* #1E293B */
 
-    --popover: 224 71% 4%;
-    --popover-foreground: 215 20.2% 65.1%;
+    --muted: 210 20% 93%;
+    --muted-foreground: 215 16% 47%;  /* #64748B */
 
-    --card: 224 71% 4%;
-    --card-foreground: 213 31% 91%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 28% 17%;
 
-    --border: 216 34% 17%;
-    --input: 216 34% 17%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 28% 17%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 1.2%;
+    --border: 214 32% 91%;            /* #E2E8F0 */
+    --input: 214 32% 91%;
 
-    --secondary: 222.2 47.4% 11.2%;
-    --secondary-foreground: 210 40% 98%;
+    --primary: 210 100% 20%;          /* #003366 */
+    --primary-foreground: 0 0% 100%;
 
-    --accent: 216 34% 17%;
-    --accent-foreground: 210 40% 98%;
+    --secondary: 210 20% 93%;
+    --secondary-foreground: 215 28% 17%;
 
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    --accent: 48 100% 50%;            /* #FFD700 */
+    --accent-foreground: 215 28% 17%;
 
-    --ring: 216 34% 17%;
+    --destructive: 0 84% 60%;         /* #EF4444 */
+    --destructive-foreground: 0 0% 100%;
+
+    --ring: 210 100% 20%;
 
     --radius: 0.5rem;
   }
@@ -41,48 +54,119 @@
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-[#F0F4F8] text-[#1E293B] antialiased;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      sans-serif;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
 }
 
-/* Glassmorphism Classes */
-.glass-panel {
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+/* ── Scrollbar Styles ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-.glass-card {
-  background: rgba(30, 41, 59, 0.5);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-/* Custom animated compliance glow */
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+/* ── Card Utility Classes ── */
+@layer components {
+  .card {
+    background-color: #ffffff;
+    border-radius: 0.75rem; /* rounded-xl */
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); /* shadow-sm */
+    border: 1px solid #e2e8f0; /* border-slate-200 */
+  }
+
+  .card-hover {
+    background-color: #ffffff;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    border: 1px solid #e2e8f0;
+    transition: box-shadow 0.2s ease-in-out;
+  }
+
+  .card-hover:hover {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* shadow-md */
+  }
+}
+
+/* ── Ticker Scroll Animation (Regulatory Pulse Marquee) ── */
+.ticker-scroll {
+  display: inline-block;
+  white-space: nowrap;
+  animation: ticker-scroll 30s linear infinite;
+}
+
+.ticker-scroll:hover {
+  animation-play-state: paused;
+}
+
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* ── Terminal Blink Animation (Cursor) ── */
+.terminal-blink {
+  animation: terminal-blink 1s step-end infinite;
+}
+
+@keyframes terminal-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ── Pulse Dot Animation (Live Indicators) ── */
+.pulse-dot {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.3);
+  }
+}
+
+/* ── Compliance Glow Effects ── */
 .compliance-glow-green {
   box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
 }
 
 .compliance-glow-red {
   box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
-}
-
-/* Modern styling custom scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
 }
