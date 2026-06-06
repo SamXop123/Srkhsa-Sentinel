@@ -46,11 +46,14 @@ export interface Circular {
 export interface Regulation {
   id: string;
   circular_id: string;
-  clause_number: string;
-  clause_title: string | null;
-  clause_text: string;
-  penalty_details: string | null;
+  regulation_id: string;
+  title: string;
+  regulator: string;
   effective_date: string;
+  penalty_clause: string | null;
+  risk_level: string;
+  affected_domains: string[];
+  summary: string;
   created_at: string;
 }
 

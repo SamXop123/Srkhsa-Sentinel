@@ -25,11 +25,14 @@ class CircularResponse(CircularBase):
         from_attributes = True
 
 class RegulationBase(BaseModel):
-    clause_number: str
-    clause_title: Optional[str] = None
-    clause_text: str
-    penalty_details: Optional[str] = None
+    regulation_id: str
+    title: str
+    regulator: str
     effective_date: date
+    penalty_clause: Optional[str] = None
+    risk_level: str
+    affected_domains: list[str]
+    summary: str
 
 class RegulationCreate(RegulationBase):
     circular_id: UUID

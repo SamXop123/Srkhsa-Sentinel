@@ -32,11 +32,14 @@ class Regulation(Base):
     
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     circular_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("circulars.id"), nullable=False)
-    clause_number: Mapped[str] = mapped_column(String(50), nullable=False)
-    clause_title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    clause_text: Mapped[str] = mapped_column(Text, nullable=False)
-    penalty_details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    regulation_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    regulator: Mapped[str] = mapped_column(String(50), nullable=False)
     effective_date: Mapped[date] = mapped_column(Date, nullable=False)
+    penalty_clause: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    risk_level: Mapped[str] = mapped_column(String(50), nullable=False, default="Medium")
+    affected_domains: Mapped[dict] = mapped_column(JSONB, default=list)
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships

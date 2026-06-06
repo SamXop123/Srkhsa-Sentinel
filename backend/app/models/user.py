@@ -24,7 +24,6 @@ class User(Base):
     role: Mapped["Role"] = relationship(back_populates="users")
     department: Mapped[Optional["Department"]] = relationship(foreign_keys=[department_id], back_populates="members")
     uploaded_circulars: Mapped[List["Circular"]] = relationship(back_populates="uploader")
-    assigned_tasks: Mapped[List["Task"]] = relationship(back_populates="assignee")
     verified_records: Mapped[List["ComplianceRecord"]] = relationship(back_populates="auditor")
     audit_logs: Mapped[List["AuditLog"]] = relationship(back_populates="user")
     notifications: Mapped[List["Notification"]] = relationship(back_populates="user")
@@ -55,7 +54,7 @@ class Notification(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     type: Mapped[str] = mapped_column(String(50), nullable=False) # Task_Assignment, Overdue_Task, Escalation, Audit_Alert
-    read_status: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     # Relationships

@@ -1,21 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { apiClient } from "../services/api";
 import {
   Search,
-  Filter,
   CheckCircle,
   XCircle,
   Edit2,
   Calendar,
   AlertCircle,
   ShieldAlert,
-  ArrowRight,
   ChevronRight,
   Info,
   X,
-  Plus,
   Bookmark,
   Check,
   RotateCcw,
+  Sparkles,
+  Award,
+  HelpCircle,
+  Loader2,
 } from "lucide-react";
 
 interface MAPItem {
@@ -31,97 +33,34 @@ interface MAPItem {
   actionPoint: string;
   riskAnalysis: string;
   status: "Pending" | "Approved" | "Rejected";
+  // Architect Reasoning Details
+  whyGenerated?: string;
+  whyDepartment?: string;
+  whyRisk?: string;
+  whyVerification?: string;
+  confidenceScore: number;
+  verificationMethod: string;
 }
 
-const INITIAL_MAPS: MAPItem[] = [
-  {
-    id: "MAP-2026-001",
-    taskName: "Appoint Chief Information Security Officer (CISO)",
-    department: "IT Security",
-    priority: "High",
-    deadline: "2026-07-01",
-    riskLevel: "Critical",
-    regRef: "RBI Master Direction on Cyber Security, Clause 3.2(a)",
-    originalText: "Every regulated entity shall designate a senior executive as the Chief Information Security Officer (CISO) who shall be responsible for implementing the cybersecurity policy, monitoring cyber threats, and ensuring compliance with these directives.",
-    aiReasoning: "Clause 3.2(a) explicitly mandates the designation of a CISO. Regulated entities have a strict requirement to establish clear executive ownership of the cybersecurity program to avoid compliance violations and security risks.",
-    actionPoint: "Formalize CISO role description, present candidate names to the Board, and issue corporate appointment letter by July 1, 2026.",
-    riskAnalysis: "Non-compliance carries a penalty of up to ₹50 Lakhs. Failure to appoint a CISO leads to operational oversight gaps in vulnerability management and incident response.",
-    status: "Pending",
-  },
-  {
-    id: "MAP-2026-002",
-    taskName: "Implement Double-Factor Authentication for Loan Approvals",
-    department: "Retail Loans",
-    priority: "High",
-    deadline: "2026-06-25",
-    riskLevel: "High",
-    regRef: "RBI Circular on Digital Lending Safety, Clause 4.1",
-    originalText: "All disbursement and transaction approval operations within digital lending platforms must employ multi-factor authentication (MFA), where at least one factor is biometric or dynamic OTP.",
-    aiReasoning: "The circular requires MFA specifically for digital lending operations. The retail loans department has been identified as the owner since they operate the active online borrower portal.",
-    actionPoint: "Integrate dynamic OTP and SMS gateway alerts directly into the retail loan approval system pipeline to satisfy the multi-factor requirement.",
-    riskAnalysis: "High likelihood of fraud attempts on unsecured lines of credit. Immediate mitigation required. Delay will trigger a warning from the RBI inspection team.",
-    status: "Pending",
-  },
-  {
-    id: "MAP-2026-003",
-    taskName: "Conduct Annual IT Security Audits & Penetration Tests",
-    department: "IT Security",
-    priority: "High",
-    deadline: "2026-08-15",
-    riskLevel: "High",
-    regRef: "SEBI Cybersecurity Resiliency Circular, Clause 6.3",
-    originalText: "Regulated intermediaries are mandated to perform a comprehensive vulnerability assessment and penetration testing (VAPT) at least once every calendar year through a CERT-In empanelled auditor.",
-    aiReasoning: "The clause requires yearly VAPT by a CERT-In auditor. IT Security must draft the RFP, hire the auditor, and complete the testing cycle prior to August 15.",
-    actionPoint: "Acquire quotes from CERT-In empanelled auditors, schedule internal scoping window, execute full network/application VAPT, and compile remediation report.",
-    riskAnalysis: "A major audit observation will be recorded if testing is not concluded within 12 months of the prior cycle. High security risk if exploits remain unpatched.",
-    status: "Pending",
-  },
-  {
-    id: "MAP-2026-004",
-    taskName: "Refresh Suspicious Transaction Reporting (STR) SOP",
-    department: "Risk & Compliance",
-    priority: "Medium",
-    deadline: "2026-07-10",
-    riskLevel: "Medium",
-    regRef: "FIU-IND Advisory 2026-AML-08, Section 2.4",
-    originalText: "Intermediaries must review and refresh their internal standard operating procedures for detecting and reporting suspicious transactions (STR) to align with updated crypto-asset tracking patterns.",
-    aiReasoning: "FIU-IND advisory demands updated procedures specifically incorporating new crypto and cross-border digital wallet patterns into monitoring rules.",
-    actionPoint: "Revise current STR detection rules in AML software, update operations staff training manual, and obtain compliance head sign-off.",
-    riskAnalysis: "Moderate regulatory risk. Can lead to missed filings of STRs, resulting in potential FIU-IND notices or compliance audits.",
-    status: "Pending",
-  },
-  {
-    id: "MAP-2026-005",
-    taskName: "Implement Interest Rate Reset Customer Notifications",
-    department: "Retail Loans",
-    priority: "Medium",
-    deadline: "2026-09-01",
-    riskLevel: "Medium",
-    regRef: "RBI Reset of Floating Interest Rate Guidelines, Clause 2.1",
-    originalText: "Regulated entities must communicate clearly to floating rate borrowers any reset of interest rates and the resulting impact on EMI duration/amount immediately via SMS/Email.",
-    aiReasoning: "Requires automated customer communication on floating interest rate resets. System needs automatic SMS/email generation triggers when benchmark rates adjust.",
-    actionPoint: "Modify core banking communication service to pull loan account interest resets and push SMS/email alerts to borrowers showing old/new EMI details.",
-    riskAnalysis: "High volume of customer grievances if transparency is lacking. Class action risks if incorrect interest adjustments occur without notification.",
-    status: "Approved",
-  },
-  {
-    id: "MAP-2026-006",
-    taskName: "Audit Third-Party IT Outsourcing Contracts",
-    department: "Legal & Vendor Risk",
-    priority: "Low",
-    deadline: "2026-09-30",
-    riskLevel: "Medium",
-    regRef: "RBI Outsourcing Guidelines, Clause 5.2",
-    originalText: "Banks must incorporate clauses regarding data confidentiality, business continuity, and audit rights in all agreements signed with service providers handling sensitive customer data.",
-    aiReasoning: "Mandates strict legal protections and audit rights in third-party vendor contracts. Vendor Risk and Legal must review existing active SaaS and Cloud agreements.",
-    actionPoint: "Run a catalog check on active vendor contracts, identify missing regulatory clauses, and send addendum documents to vendors for signature.",
-    riskAnalysis: "Low immediate operational threat, but high structural compliance threat if a vendor experiences a breach and bank has no audit recourse.",
-    status: "Pending",
-  },
+const DEPARTMENTS = [
+  "Customer Operations",
+  "Retail Loans",
+  "Corporate Banking",
+  "Risk Management",
+  "Treasury",
+  "Cyber Security",
+  "IT Operations",
+  "Compliance",
+  "Legal",
+  "AML Team",
+  "Fraud Monitoring",
+  "Vendor Management",
+  "Human Resources",
 ];
 
 export const MapReview: React.FC = () => {
-  const [maps, setMaps] = useState<MAPItem[]>(INITIAL_MAPS);
+  const [maps, setMaps] = useState<MAPItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDept, setSelectedDept] = useState("All");
@@ -129,6 +68,42 @@ export const MapReview: React.FC = () => {
 
   // Edit Modal State
   const [editingMap, setEditingMap] = useState<MAPItem | null>(null);
+
+  const fetchMaps = async () => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.get<any[]>("/maps");
+      const mapped = response.data.map((item) => ({
+        id: item.id,
+        taskName: item.task_title,
+        department: item.department,
+        priority: item.priority as any,
+        deadline: item.deadline,
+        riskLevel: item.risk_level as any,
+        regRef: `${item.regulation_ref} · ${item.regulation_title}`,
+        originalText: item.task_description,
+        aiReasoning: item.reasoning?.why_generated || "Generated based on regulatory mandates.",
+        actionPoint: item.required_outcome,
+        riskAnalysis: item.reasoning?.why_risk || "Penalties for non-compliance are severe.",
+        status: item.status as any,
+        whyGenerated: item.reasoning?.why_generated,
+        whyDepartment: item.reasoning?.why_department,
+        whyRisk: item.reasoning?.why_risk,
+        whyVerification: item.reasoning?.why_verification,
+        confidenceScore: item.confidence_score,
+        verificationMethod: item.verification_method,
+      }));
+      setMaps(mapped);
+    } catch (err) {
+      console.error("Failed to fetch MAPs from backend:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMaps();
+  }, []);
 
   const selectedMap = maps.find((m) => m.id === selectedMapId) || null;
 
@@ -143,27 +118,67 @@ export const MapReview: React.FC = () => {
     return matchesSearch && matchesDept && matchesPriority;
   });
 
-  const handleApprove = (id: string, e?: React.MouseEvent) => {
+  const handleApprove = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setMaps((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: "Approved" } : item))
-    );
+    try {
+      await apiClient.post(`/maps/${id}/approve?status=Approved`);
+      setMaps((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, status: "Approved" } : item))
+      );
+    } catch (err) {
+      console.error("Failed to approve MAP:", err);
+      alert("Failed to approve MAP action item.");
+    }
   };
 
-  const handleReject = (id: string, e?: React.MouseEvent) => {
+  const handleReject = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setMaps((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, status: "Rejected" } : item))
-    );
+    try {
+      await apiClient.post(`/maps/${id}/approve?status=Rejected`);
+      setMaps((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, status: "Rejected" } : item))
+      );
+    } catch (err) {
+      console.error("Failed to reject MAP:", err);
+      alert("Failed to reject MAP action item.");
+    }
   };
 
-  const handleSaveEdit = (e: React.FormEvent) => {
+  const handleReopen = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      await apiClient.post(`/maps/${id}/approve?status=Pending`);
+      setMaps((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, status: "Pending" } : item))
+      );
+    } catch (err) {
+      console.error("Failed to reopen MAP:", err);
+      alert("Failed to re-open MAP action item.");
+    }
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingMap) return;
-    setMaps((prev) =>
-      prev.map((item) => (item.id === editingMap.id ? editingMap : item))
-    );
-    setEditingMap(null);
+    try {
+      await apiClient.put(`/maps/${editingMap.id}`, {
+        task_title: editingMap.taskName,
+        task_description: editingMap.originalText,
+        department: editingMap.department,
+        priority: editingMap.priority,
+        risk_level: editingMap.riskLevel,
+        deadline: editingMap.deadline,
+        required_outcome: editingMap.actionPoint,
+        verification_method: editingMap.verificationMethod,
+      });
+      setMaps((prev) =>
+        prev.map((item) => (item.id === editingMap.id ? editingMap : item))
+      );
+      setEditingMap(null);
+    } catch (err) {
+      console.error("Failed to save MAP edits:", err);
+      alert("Failed to save MAP modifications.");
+    }
   };
 
   const startEdit = (item: MAPItem, e: React.MouseEvent) => {
@@ -180,11 +195,11 @@ export const MapReview: React.FC = () => {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "High":
-        return "bg-amber-100 text-amber-800";
+        return "bg-amber-100 text-amber-800 border-amber-200";
       case "Medium":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-100 text-blue-800 border-blue-200";
       case "Low":
-        return "bg-slate-100 text-slate-800";
+        return "bg-slate-100 text-slate-800 border-slate-200";
       default:
         return "bg-slate-100 text-slate-800";
     }
@@ -240,10 +255,11 @@ export const MapReview: React.FC = () => {
             onChange={(e) => setSelectedDept(e.target.value)}
           >
             <option value="All">All Departments</option>
-            <option value="IT Security">IT Security</option>
-            <option value="Retail Loans">Retail Loans</option>
-            <option value="Risk & Compliance">Risk & Compliance</option>
-            <option value="Legal & Vendor Risk">Legal & Vendor Risk</option>
+            {DEPARTMENTS.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
+            ))}
           </select>
 
           {/* Priority Filter */}
@@ -275,123 +291,133 @@ export const MapReview: React.FC = () => {
       </div>
 
       {/* Grid of MAP Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredMaps.map((item) => (
-          <div
-            key={item.id}
-            onClick={() => setSelectedMapId(item.id)}
-            className={`bg-white rounded-xl border p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between relative group ${
-              selectedMapId === item.id ? "ring-2 ring-[#003366] border-transparent" : "border-slate-200"
-            }`}
-          >
-            {/* Top row: ID and Status */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-mono font-bold text-slate-400">{item.id}</span>
-                <span
-                  className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                    item.status === "Approved"
-                      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                      : item.status === "Rejected"
-                      ? "bg-red-50 text-red-700 border border-red-200"
-                      : "bg-amber-50 text-amber-700 border border-amber-200"
-                  }`}
-                >
-                  {item.status}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+          <Loader2 className="w-10 h-10 animate-spin text-[#003366] mb-3" />
+          <span className="text-sm font-semibold">Retrieving MAP specifications from active vault...</span>
+        </div>
+      ) : filteredMaps.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400 shadow-sm">
+          <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <h3 className="font-bold text-slate-700 text-sm">No Action Points Found</h3>
+          <p className="text-xs text-slate-500 mt-1">
+            Either no circulars have been processed, or your filters matched no records.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredMaps.map((item) => (
+            <div
+              key={item.id}
+              onClick={() => setSelectedMapId(item.id)}
+              className={`bg-white rounded-xl border p-5 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between relative group ${
+                selectedMapId === item.id ? "ring-2 ring-[#003366] border-transparent" : "border-slate-200"
+              }`}
+            >
+              {/* Top row: ID and Status */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-mono font-bold text-slate-400">MAP-{item.id.slice(0, 8)}</span>
+                  <span
+                    className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                      item.status === "Approved"
+                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                        : item.status === "Rejected"
+                        ? "bg-red-50 text-red-700 border border-red-200"
+                        : "bg-amber-50 text-amber-700 border border-amber-200"
+                    }`}
+                  >
+                    {item.status}
+                  </span>
+                </div>
+
+                {/* Title & Ref */}
+                <h3 className="font-bold text-slate-900 text-sm leading-snug mb-1 group-hover:text-[#003366] transition-colors">
+                  {item.taskName}
+                </h3>
+                <p className="text-[11px] text-slate-500 font-medium mb-4 flex items-center gap-1.5">
+                  <Bookmark className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                  <span className="truncate max-w-[220px]">{item.regRef}</span>
+                </p>
+
+                {/* Details grid */}
+                <div className="grid grid-cols-2 gap-3 mb-4 py-3 border-y border-slate-100 text-[11px]">
+                  <div>
+                    <span className="text-slate-400 block mb-0.5 uppercase tracking-wider font-semibold">Department</span>
+                    <span className="font-semibold text-slate-700 truncate block max-w-[130px]">{item.department}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block mb-0.5 uppercase tracking-wider font-semibold">Deadline</span>
+                    <span className="font-semibold text-slate-700 flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-slate-400" />
+                      {item.deadline}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block mb-0.5 uppercase tracking-wider font-semibold">Priority</span>
+                    <span className={`px-1.5 py-0.2 rounded font-semibold inline-block border ${getPriorityColor(item.priority)}`}>
+                      {item.priority}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block mb-0.5 uppercase tracking-wider font-semibold">Risk Level</span>
+                    <span className={`px-1.5 py-0.2 rounded font-semibold inline-block border ${getRiskColor(item.riskLevel)}`}>
+                      {item.riskLevel}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Row */}
+              <div className="flex items-center justify-between pt-1 gap-2 border-t border-slate-100 mt-2">
+                <span className="text-xs text-slate-400 flex items-center gap-1 group-hover:text-[#003366] transition-colors font-medium">
+                  Review Details
+                  <ChevronRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
                 </span>
-              </div>
 
-              {/* Title & Ref */}
-              <h3 className="font-bold text-slate-900 text-sm leading-snug mb-1 group-hover:text-[#003366] transition-colors">
-                {item.taskName}
-              </h3>
-              <p className="text-[11px] text-slate-500 font-medium mb-4 flex items-center gap-1.5">
-                <Bookmark className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                <span className="truncate max-w-[220px]">{item.regRef}</span>
-              </p>
+                {item.status === "Pending" && (
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={(e) => startEdit(item, e)}
+                      className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800 transition-colors"
+                      title="Edit action item"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => handleReject(item.id, e)}
+                      className="p-1.5 hover:bg-red-50 rounded text-red-500 transition-colors border border-transparent hover:border-red-200"
+                      title="Reject MAP"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => handleApprove(item.id, e)}
+                      className="p-1.5 bg-[#FFD700] hover:bg-[#e6c200] rounded text-[#003366] font-semibold transition-colors"
+                      title="Approve & Dispatch"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
 
-              {/* Details grid */}
-              <div className="grid grid-cols-2 gap-3 mb-4 py-3 border-y border-slate-100 text-[11px]">
-                <div>
-                  <span className="text-slate-400 block mb-0.5 uppercase tracking-wider font-semibold">Department</span>
-                  <span className="font-semibold text-slate-700">{item.department}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-0.5 uppercase tracking-wider font-semibold">Deadline</span>
-                  <span className="font-semibold text-slate-700 flex items-center gap-1">
-                    <Calendar className="w-3 h-3 text-slate-400" />
-                    {item.deadline}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-0.5 uppercase tracking-wider font-semibold">Priority</span>
-                  <span className={`px-1.5 py-0.2 rounded font-semibold inline-block ${getPriorityColor(item.priority)}`}>
-                    {item.priority}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block mb-0.5 uppercase tracking-wider font-semibold">Risk Level</span>
-                  <span className={`px-1.5 py-0.2 rounded font-semibold inline-block border ${getRiskColor(item.riskLevel)}`}>
-                    {item.riskLevel}
-                  </span>
-                </div>
+                {item.status !== "Pending" && (
+                  <button
+                    onClick={(e) => handleReopen(item.id, e)}
+                    className="text-[10px] text-slate-500 hover:text-slate-800 flex items-center gap-1 py-1 px-2 hover:bg-slate-100 rounded"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Re-open
+                  </button>
+                )}
               </div>
             </div>
+          ))}
+        </div>
+      )}
 
-            {/* Action Row */}
-            <div className="flex items-center justify-between pt-1 gap-2 border-t border-slate-100 mt-2">
-              <span className="text-xs text-slate-400 flex items-center gap-1 group-hover:text-[#003366] transition-colors font-medium">
-                Review Details
-                <ChevronRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5" />
-              </span>
-
-              {item.status === "Pending" && (
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={(e) => startEdit(item, e)}
-                    className="p-1.5 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800 transition-colors"
-                    title="Edit action item"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={(e) => handleReject(item.id, e)}
-                    className="p-1.5 hover:bg-red-50 rounded text-red-500 transition-colors border border-transparent hover:border-red-200"
-                    title="Reject MAP"
-                  >
-                    <XCircle className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={(e) => handleApprove(item.id, e)}
-                    className="p-1.5 bg-[#FFD700] hover:bg-[#e6c200] rounded text-[#003366] font-semibold transition-colors"
-                    title="Approve & Dispatch"
-                  >
-                    <CheckCircle className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-
-              {item.status !== "Pending" && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMaps((prev) =>
-                      prev.map((m) => (m.id === item.id ? { ...m, status: "Pending" } : m))
-                    );
-                  }}
-                  className="text-[10px] text-slate-500 hover:text-slate-800 flex items-center gap-1 py-1 px-2 hover:bg-slate-100 rounded"
-                >
-                  <RotateCcw className="w-3 h-3" /> Re-open
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Side Details Drawer (Part 3) */}
+      {/* Side Details Drawer */}
       <div
-        className={`fixed top-0 right-0 h-screen w-[480px] bg-white border-l border-slate-200 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col justify-between ${
+        className={`fixed top-0 right-0 h-screen w-[520px] bg-white border-l border-slate-200 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col justify-between ${
           selectedMap ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -401,9 +427,15 @@ export const MapReview: React.FC = () => {
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <div>
                 <span className="text-[10px] font-bold text-slate-400 font-mono tracking-wider block mb-0.5">
-                  {selectedMap.id} · AUDITOR WORKSPACE
+                  MAP-{selectedMap.id.slice(0, 8)} · AUDITOR WORKSPACE
                 </span>
-                <h2 className="text-base font-bold text-slate-900 leading-snug">MAP Specifications</h2>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <h2 className="text-base font-bold text-slate-900 leading-snug">MAP Specifications</h2>
+                  <span className="bg-[#003366]/10 text-[#003366] text-[9px] font-bold uppercase px-2 py-0.5 rounded flex items-center gap-1 border border-[#003366]/20">
+                    <Sparkles className="w-2.5 h-2.5 fill-[#003366]" />
+                    Generated By Architect Agent
+                  </span>
+                </div>
               </div>
               <button
                 onClick={() => setSelectedMapId(null)}
@@ -415,10 +447,18 @@ export const MapReview: React.FC = () => {
 
             {/* Drawer Scrollable Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Task Title */}
-              <div>
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">Generated Action Point</h3>
-                <p className="text-base font-bold text-[#003366] leading-snug">{selectedMap.taskName}</p>
+              {/* Task Title & Confidence */}
+              <div className="flex justify-between items-start gap-4">
+                <div className="space-y-0.5">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Generated Action Point</h3>
+                  <p className="text-base font-bold text-[#003366] leading-snug">{selectedMap.taskName}</p>
+                </div>
+                <div className="flex-shrink-0 bg-emerald-50 border border-emerald-200 rounded-lg p-2 text-center min-w-[75px]">
+                  <span className="text-[9px] font-bold text-emerald-800 uppercase block tracking-wide">Confidence</span>
+                  <span className="text-base font-extrabold text-emerald-700 font-mono">
+                    {(selectedMap.confidenceScore * 100).toFixed(0)}%
+                  </span>
+                </div>
               </div>
 
               {/* Badges Info */}
@@ -432,6 +472,12 @@ export const MapReview: React.FC = () => {
                   <span className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
                     <Calendar className="w-4 h-4 text-[#003366]" />
                     {selectedMap.deadline}
+                  </span>
+                </div>
+                <div className="mt-2">
+                  <span className="text-xs text-slate-400 block font-medium mb-1">Verification Method</span>
+                  <span className="text-xs font-bold bg-[#003366]/5 text-[#003366] border border-[#003366]/10 px-2 py-1 rounded inline-block">
+                    {selectedMap.verificationMethod}
                   </span>
                 </div>
               </div>
@@ -448,15 +494,42 @@ export const MapReview: React.FC = () => {
                 <p className="text-[11px] font-semibold text-[#003366] font-mono">{selectedMap.regRef}</p>
               </div>
 
-              {/* AI Reasoning */}
-              <div className="space-y-2">
+              {/* Architect Reasoning Panels (Why Generated, why department, why risk, why verification) */}
+              <div className="space-y-3">
                 <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <Info className="w-4 h-4 text-emerald-600" />
+                  <Info className="w-4 h-4 text-[#003366]" />
                   Architect Agent Reasoning
                 </h4>
-                <p className="text-xs text-slate-600 leading-relaxed bg-emerald-50/40 border border-emerald-100 p-4 rounded-lg">
-                  {selectedMap.aiReasoning}
-                </p>
+                
+                <div className="space-y-3">
+                  {/* Why Generated */}
+                  <div className="bg-slate-50/50 border border-slate-200 p-3 rounded-lg text-xs space-y-1">
+                    <span className="font-bold text-slate-700 block uppercase tracking-wider text-[9px]">Why this MAP was generated</span>
+                    <p className="text-slate-600 leading-normal">{selectedMap.whyGenerated || selectedMap.aiReasoning}</p>
+                  </div>
+
+                  {/* Why Department */}
+                  <div className="bg-slate-50/50 border border-slate-200 p-3 rounded-lg text-xs space-y-1">
+                    <span className="font-bold text-slate-700 block uppercase tracking-wider text-[9px]">Why this department was selected</span>
+                    <p className="text-slate-600 leading-normal">
+                      {selectedMap.whyDepartment || `This action falls directly under ${selectedMap.department}'s active operational framework.`}
+                    </p>
+                  </div>
+
+                  {/* Why Risk */}
+                  <div className="bg-red-50/20 border border-red-100 p-3 rounded-lg text-xs space-y-1">
+                    <span className="font-bold text-red-950 block uppercase tracking-wider text-[9px]">Why this risk level was assigned</span>
+                    <p className="text-red-900/90 leading-normal">{selectedMap.whyRisk || selectedMap.riskAnalysis}</p>
+                  </div>
+
+                  {/* Why Verification */}
+                  <div className="bg-slate-50/50 border border-slate-200 p-3 rounded-lg text-xs space-y-1">
+                    <span className="font-bold text-slate-700 block uppercase tracking-wider text-[9px]">Why this verification method was selected</span>
+                    <p className="text-slate-600 leading-normal">
+                      {selectedMap.whyVerification || `A formal ${selectedMap.verificationMethod} is required to satisfy independent compliance auditors.`}
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Implementation Steps */}
@@ -469,25 +542,14 @@ export const MapReview: React.FC = () => {
                 </p>
               </div>
 
-              {/* Risk Analysis */}
-              <div className="space-y-2 border-t border-slate-100 pt-4">
-                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                  <ShieldAlert className="w-4 h-4 text-red-600" />
-                  Risk &amp; Impact Analysis
-                </h4>
-                <div className="bg-red-50/50 border border-red-100 p-4 rounded-lg space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border border-red-200 bg-red-100 text-red-800">
-                      Risk Level: {selectedMap.riskLevel}
-                    </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border border-amber-200 bg-amber-100 text-amber-800">
-                      Priority: {selectedMap.priority}
-                    </span>
-                  </div>
-                  <p className="text-xs text-red-950 leading-relaxed font-medium">
-                    {selectedMap.riskAnalysis}
-                  </p>
-                </div>
+              {/* Risk & Priority Metrics */}
+              <div className="flex gap-2.5 pt-2">
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${getRiskColor(selectedMap.riskLevel)}`}>
+                  Risk Level: {selectedMap.riskLevel}
+                </span>
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${getPriorityColor(selectedMap.priority)}`}>
+                  Priority: {selectedMap.priority}
+                </span>
               </div>
             </div>
 
@@ -519,11 +581,7 @@ export const MapReview: React.FC = () => {
                     Current Status: <span className="font-bold text-[#003366]">{selectedMap.status}</span>
                   </span>
                   <button
-                    onClick={() => {
-                      setMaps((prev) =>
-                        prev.map((m) => (m.id === selectedMap.id ? { ...m, status: "Pending" } : m))
-                      );
-                    }}
+                    onClick={() => handleReopen(selectedMap.id)}
                     className="text-xs text-[#003366] hover:underline font-bold flex items-center gap-1"
                   >
                     <RotateCcw className="w-3.5 h-3.5" /> Re-open specifications
@@ -535,7 +593,7 @@ export const MapReview: React.FC = () => {
         )}
       </div>
 
-      {/* Edit MAP Dialog / Overlay */}
+      {/* Edit MAP Dialog */}
       {editingMap && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <form
@@ -544,7 +602,7 @@ export const MapReview: React.FC = () => {
           >
             <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <div>
-                <span className="text-xs font-mono font-bold text-slate-400">{editingMap.id}</span>
+                <span className="text-xs font-mono font-bold text-slate-400">MAP-{editingMap.id.slice(0, 8)}</span>
                 <h3 className="text-base font-bold text-slate-800">Edit Action Point</h3>
               </div>
               <button
@@ -578,10 +636,11 @@ export const MapReview: React.FC = () => {
                     value={editingMap.department}
                     onChange={(e) => setEditingMap({ ...editingMap, department: e.target.value })}
                   >
-                    <option value="IT Security">IT Security</option>
-                    <option value="Retail Loans">Retail Loans</option>
-                    <option value="Risk & Compliance">Risk & Compliance</option>
-                    <option value="Legal & Vendor Risk">Legal & Vendor Risk</option>
+                    {DEPARTMENTS.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -627,6 +686,18 @@ export const MapReview: React.FC = () => {
                     <option value="Low">Low</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Verification Method */}
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Verification Method</label>
+                <input
+                  type="text"
+                  required
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-[#003366] focus:border-[#003366]"
+                  value={editingMap.verificationMethod}
+                  onChange={(e) => setEditingMap({ ...editingMap, verificationMethod: e.target.value })}
+                />
               </div>
 
               {/* Detailed Action Requirement */}

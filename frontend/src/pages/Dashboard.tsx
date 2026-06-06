@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   FileText,
   Bot,
@@ -21,9 +21,11 @@ import {
   ChevronRight,
   Database,
   Building,
+  ShieldAlert,
 } from "lucide-react";
 import { AgentTerminal } from "../components/terminal/AgentTerminal";
 import { Link } from "react-router-dom";
+import { apiClient } from "../services/api";
 
 /* ───────────────────────── KPI Card ───────────────────────── */
 interface KPICardProps {
@@ -195,8 +197,109 @@ const COMPLIANCE_DATA = [
   { id: "RBI/2026-27/11", desc: "Outsourcing Vendor Audit Access mandates", deadline: "2026-09-30", dept: "Legal & Vendor Risk", deptBg: "bg-emerald-50 text-emerald-700", status: "Compliant" },
 ];
 
+/* ─────────────────── Mock Discoveries Data ─────────────────── */
+const MOCK_DISCOVERIES = [
+  {
+    id: "mock-disc-1",
+    circular_id: "mock-1",
+    circular_number: "RBI/2026-27/14",
+    title: "Appointment of CISO Mandate",
+    regulator: "RBI",
+    effective_date: "2026-07-01",
+    risk_level: "Critical"
+  },
+  {
+    id: "mock-disc-2",
+    circular_id: "mock-2",
+    circular_number: "SEBI/HO/2026/05",
+    title: "Annual IT VAPT Audit Scoping",
+    regulator: "SEBI",
+    effective_date: "2026-08-15",
+    risk_level: "High"
+  },
+  {
+    id: "mock-disc-3",
+    circular_id: "mock-3",
+    circular_number: "FIU-IND/2026/08",
+    title: "Suspicious Transaction crypto reporting SOP",
+    regulator: "FIU-IND",
+    effective_date: "2026-07-10",
+    risk_level: "Medium"
+  }
+];
+
 /* ═══════════════════════ DASHBOARD PAGE ══════════════════════ */
 export const Dashboard: React.FC = () => {
+  const [discoveries, setDiscoveries] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState({
+    total_maps: 0,
+    high_risk_maps: 0,
+    pending_approval: 0,
+    approved_maps: 0
+  });
+
+  useEffect(() => {
+    const fetchRecentScoutDiscoveries = async () => {
+      try {
+        const response = await apiClient.get("/circulars/regulations/recent");
+        setDiscoveries(response.data);
+      } catch (err) {
+        console.warn("Failed to fetch live Scout discoveries, defaulting to mock data:", err);
+      }
+    };
+    
+    const fetchMetrics = async () => {
+      try {
+        const response = await apiClient.get("/maps/metrics");
+        setMetrics(response.data);
+      } catch (err) {
+        console.warn("Failed to fetch live MAP metrics:", err);
+      }
+    };
+
+    const fetchTasks = async () => {
+      try {
+        const response = await apiClient.get("/tasks");
+        setTasks(response.data);
+      } catch (err) {
+        console.warn("Failed to fetch live tasks list:", err);
+      }
+    };
+
+    fetchRecentScoutDiscoveries();
+    fetchMetrics();
+    fetchTasks();
+  }, []);
+
+  const displayedDiscoveries = discoveries.length > 0 ? discoveries : MOCK_DISCOVERIES;
+
+  // Group tasks by department for the snapshot
+  const deptStats: Record<string, { completed: number; total: number }> = {};
+  tasks.forEach((t) => {
+    const dName = t.department_name || "General Compliance";
+    if (!deptStats[dName]) {
+      deptStats[dName] = { completed: 0, total: 0 };
+    }
+    deptStats[dName].total += 1;
+    if (t.status === "Completed") {
+      deptStats[dName].completed += 1;
+    }
+  });
+
+  const getRiskBadgeColor = (risk: string) => {
+    switch (risk) {
+      case "Critical":
+        return "bg-red-100 text-red-800 border-red-200";
+      case "High":
+        return "bg-red-50 text-red-700 border-red-100";
+      case "Medium":
+        return "bg-amber-50 text-amber-700 border-amber-100";
+      default:
+        return "bg-slate-50 text-slate-600 border-slate-200";
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* ─── Executive Overview Header ─── */}
@@ -256,7 +359,42 @@ export const Dashboard: React.FC = () => {
         />
       </div>
 
-      {/* ─── Agentic Regulatory Pipeline (Part 1) ─── */}
+      {/* ─── MAP Generation Metrics ─── */}
+      <div>
+        <p className="text-xs font-bold text-[#003366] uppercase tracking-widest mb-3">MAP Generation Metrics (Architect Agent)</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <KPICard
+            title="Total MAPs"
+            value={metrics.total_maps.toString()}
+            subtitle="Extracted Action Points"
+            icon={<Cpu className="w-5 h-5 text-[#003366]" />}
+            iconBg="bg-blue-50"
+          />
+          <KPICard
+            title="High &amp; Critical Risk"
+            value={metrics.high_risk_maps.toString()}
+            subtitle="Requires rapid remediation"
+            icon={<ShieldAlert className="w-5 h-5 text-red-600" />}
+            iconBg="bg-red-50"
+          />
+          <KPICard
+            title="Pending Approval"
+            value={metrics.pending_approval.toString()}
+            subtitle="Awaiting human reviewer sign-off"
+            icon={<Clock className="w-5 h-5 text-amber-600" />}
+            iconBg="bg-amber-50"
+          />
+          <KPICard
+            title="Approved MAPs"
+            value={metrics.approved_maps.toString()}
+            subtitle="Dispatched and active"
+            icon={<CheckCircle2 className="w-5 h-5 text-emerald-600" />}
+            iconBg="bg-emerald-50"
+          />
+        </div>
+      </div>
+
+      {/* ─── Agentic Regulatory Pipeline ─── */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
         <div className="flex items-start justify-between mb-4 pb-3 border-b border-slate-100">
           <div>
@@ -312,6 +450,41 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* ─── Compliance Tasks Overview ─── */}
+      <div>
+        <p className="text-xs font-bold text-[#003366] uppercase tracking-widest mb-3">Compliance Tasks Overview (Dispatcher Agent)</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+          <KPICard
+            title="Tasks Assigned"
+            value={tasks.filter(t => t.status === "Assigned" || t.status === "Pending").length.toString()}
+            subtitle="Routed to Department Queue"
+            icon={<Building className="w-5 h-5 text-violet-600" />}
+            iconBg="bg-violet-50"
+          />
+          <KPICard
+            title="Tasks In Progress"
+            value={tasks.filter(t => t.status === "In Progress").length.toString()}
+            subtitle="Under active HOD resolution"
+            icon={<Clock className="w-5 h-5 text-blue-600" />}
+            iconBg="bg-blue-50"
+          />
+          <KPICard
+            title="Awaiting Verification"
+            value={tasks.filter(t => t.status === "Awaiting Verification").length.toString()}
+            subtitle="Evidence pending audit checks"
+            icon={<AlertTriangle className="w-5 h-5 text-amber-600" />}
+            iconBg="bg-amber-50"
+          />
+          <KPICard
+            title="Tasks Completed"
+            value={tasks.filter(t => t.status === "Completed").length.toString()}
+            subtitle="Compliance loop verified closed"
+            icon={<CheckCircle2 className="w-5 h-5 text-emerald-600" />}
+            iconBg="bg-emerald-50"
+          />
+        </div>
+      </div>
+
       {/* ─── Core Operations Zone ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column: Ingestion, Department Snapshot, Recent Regulations */}
@@ -353,86 +526,118 @@ export const Dashboard: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              {/* IT Security */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="text-slate-700">IT Security</span>
-                  <span className="text-[#003366]">85% Compliant (17/20 tasks)</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: "85%" }} />
-                </div>
-              </div>
+              {Object.keys(deptStats).length > 0 ? (
+                Object.entries(deptStats).map(([deptName, stats]: any) => {
+                  const pct = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 100;
+                  const getProgressColor = (percent: number) => {
+                    if (percent >= 80) return "bg-emerald-500";
+                    if (percent >= 50) return "bg-amber-500";
+                    return "bg-blue-500";
+                  };
+                  return (
+                    <div key={deptName} className="space-y-1">
+                      <div className="flex justify-between text-xs font-semibold">
+                        <span className="text-slate-700">{deptName}</span>
+                        <span className="text-[#003366]">
+                          {pct}% Compliant ({stats.completed}/{stats.total} tasks)
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div className={`${getProgressColor(pct)} h-full rounded-full`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <>
+                  {/* IT Security */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span className="text-slate-700">IT Security</span>
+                      <span className="text-[#003366]">85% Compliant (17/20 tasks)</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                      <div className="bg-emerald-500 h-full rounded-full" style={{ width: "85%" }} />
+                    </div>
+                  </div>
 
-              {/* Retail Loans */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="text-slate-700">Retail Loans &amp; Operations</span>
-                  <span className="text-[#003366]">60% Compliant (12/20 tasks)</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-amber-500 h-full rounded-full" style={{ width: "60%" }} />
-                </div>
-              </div>
+                  {/* Retail Loans */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span className="text-slate-700">Retail Loans &amp; Operations</span>
+                      <span className="text-[#003366]">60% Compliant (12/20 tasks)</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                      <div className="bg-amber-500 h-full rounded-full" style={{ width: "60%" }} />
+                    </div>
+                  </div>
 
-              {/* Risk Management */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="text-slate-700">Risk &amp; Compliance</span>
-                  <span className="text-[#003366]">95% Compliant (19/20 tasks)</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: "95%" }} />
-                </div>
-              </div>
+                  {/* Risk Management */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span className="text-slate-700">Risk &amp; Compliance</span>
+                      <span className="text-[#003366]">95% Compliant (19/20 tasks)</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                      <div className="bg-emerald-500 h-full rounded-full" style={{ width: "95%" }} />
+                    </div>
+                  </div>
 
-              {/* Legal & Vendor Risk */}
-              <div className="space-y-1">
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="text-slate-700">Legal &amp; Vendor Risk</span>
-                  <span className="text-[#003366]">75% Compliant (15/20 tasks)</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-blue-500 h-full rounded-full" style={{ width: "75%" }} />
-                </div>
-              </div>
+                  {/* Legal & Vendor Risk */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs font-semibold">
+                      <span className="text-slate-700">Legal &amp; Vendor Risk</span>
+                      <span className="text-[#003366]">75% Compliant (15/20 tasks)</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                      <div className="bg-blue-500 h-full rounded-full" style={{ width: "75%" }} />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
-          {/* Recent Regulations Panel */}
+          {/* Recent Scout Discoveries Panel */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
             <div className="flex items-center gap-2.5 pb-2 border-b border-slate-100">
               <div className="w-8 h-8 rounded-lg bg-[#003366]/10 flex items-center justify-center">
                 <Database className="w-4 h-4 text-[#003366]" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-slate-800">Recent Regulations Panel</h3>
-                <p className="text-xs text-slate-500">Latest circular feeds ingested from regulatory API scrapers</p>
+                <h3 className="text-sm font-semibold text-slate-800">Recent Scout Discoveries</h3>
+                <p className="text-xs text-slate-500">Structured compliance metadata extracted by active Scout agents</p>
               </div>
             </div>
 
             <div className="divide-y divide-slate-100">
-              <div className="py-2.5 flex items-start justify-between gap-3 group">
-                <div className="min-w-0">
-                  <p className="text-xs font-mono font-bold text-[#003366]">RBI/2026-27/14</p>
-                  <p className="text-xs font-medium text-slate-700 truncate mt-0.5">Revised KYC Master Direction (Tier-1 Framework)</p>
+              {displayedDiscoveries.map((disc, idx) => (
+                <div key={disc.id || idx} className="py-2.5 flex items-start justify-between gap-3 group">
+                  <div className="min-w-0">
+                    <p className="text-xs font-mono font-bold text-[#003366] flex items-center gap-1.5">
+                      {disc.circular_number}
+                      <span className={`px-1.5 py-0.2 rounded text-[9px] border font-bold uppercase ${getRiskBadgeColor(disc.risk_level)}`}>
+                        {disc.risk_level}
+                      </span>
+                    </p>
+                    {disc.circular_id && disc.circular_id !== "mock-1" && disc.circular_id !== "mock-2" && disc.circular_id !== "mock-3" ? (
+                      <Link
+                        to={`/circulars/${disc.circular_id}`}
+                        className="text-xs font-medium text-slate-700 truncate mt-0.5 block hover:underline hover:text-[#003366]"
+                      >
+                        {disc.title}
+                      </Link>
+                    ) : (
+                      <p className="text-xs font-medium text-slate-700 truncate mt-0.5">
+                        {disc.title}
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap bg-slate-100 px-2 py-0.5 rounded">
+                    {disc.effective_date}
+                  </span>
                 </div>
-                <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap bg-slate-100 px-2 py-0.5 rounded">06 Jun 2026</span>
-              </div>
-              <div className="py-2.5 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-mono font-bold text-[#003366]">SEBI/HO/MIRSD/2026/05</p>
-                  <p className="text-xs font-medium text-slate-700 truncate mt-0.5">Updated Intermediary Margin Deposit requirements</p>
-                </div>
-                <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap bg-slate-100 px-2 py-0.5 rounded">05 Jun 2026</span>
-              </div>
-              <div className="py-2.5 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs font-mono font-bold text-[#003366]">FIU-IND/2026/08</p>
-                  <p className="text-xs font-medium text-slate-700 truncate mt-0.5">AML enhanced STR rules for Digital Asset holdings</p>
-                </div>
-                <span className="text-[10px] text-slate-400 font-semibold whitespace-nowrap bg-slate-100 px-2 py-0.5 rounded">03 Jun 2026</span>
-              </div>
+              ))}
             </div>
           </div>
         </div>
@@ -460,23 +665,23 @@ export const Dashboard: React.FC = () => {
               {/* Activity 1 */}
               <div className="relative">
                 <span className="absolute -left-[21px] top-0.5 bg-emerald-500 border border-white w-2 h-2 rounded-full" />
-                <p className="font-semibold text-slate-800">Auditor Agent successfully verified</p>
-                <p className="text-slate-500 mt-0.5">Checked core bank record access for outsourcing vendors. Status: Compliant.</p>
+                <p className="font-semibold text-slate-800">Scout Agent analysis completed</p>
+                <p className="text-slate-500 mt-0.5">Extracted structured regulation specifications, risk factors, and deadlines.</p>
                 <span className="text-[10px] text-slate-400 block mt-1">2 minutes ago</span>
               </div>
 
               {/* Activity 2 */}
               <div className="relative">
                 <span className="absolute -left-[21px] top-0.5 bg-blue-500 border border-white w-2 h-2 rounded-full" />
-                <p className="font-semibold text-slate-800">Architect Agent generated MAP-2026-003</p>
-                <p className="text-slate-500 mt-0.5">Parsed SEBI circular. Action point: Hire CERT-In empanelled auditor for VAPT.</p>
+                <p className="font-semibold text-slate-800">Scout Agent parsing pipeline scheduled</p>
+                <p className="text-slate-500 mt-0.5">PDF circular metadata ingested. Initiating LangGraph node execution...</p>
                 <span className="text-[10px] text-slate-400 block mt-1">10 minutes ago</span>
               </div>
 
               {/* Activity 3 */}
               <div className="relative">
                 <span className="absolute -left-[21px] top-0.5 bg-emerald-500 border border-white w-2 h-2 rounded-full" />
-                <p className="font-semibold text-slate-800">Scout Agent finished structural extraction</p>
+                <p className="font-semibold text-slate-800">Scout Agent initialized circular parsing</p>
                 <p className="text-slate-500 mt-0.5">Identified 6 regulatory clauses from RBI KYC Direction. Extracted 2 deadlines.</p>
                 <span className="text-[10px] text-slate-400 block mt-1">15 minutes ago</span>
               </div>

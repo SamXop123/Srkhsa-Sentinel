@@ -1,42 +1,58 @@
 from pydantic import BaseModel
 from uuid import UUID
 from datetime import datetime, date
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 class TaskBase(BaseModel):
     map_id: UUID
+    department_id: UUID
+    assigned_to: str
     title: str
     description: str
-    department_id: UUID
-    assigned_to_user_id: Optional[UUID] = None
+    priority: str
     deadline: date
+    status: str
 
 class TaskCreate(TaskBase):
     pass
 
-class TaskResponse(TaskBase):
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    assigned_to: Optional[str] = None
+    priority: Optional[str] = None
+    deadline: Optional[date] = None
+    status: Optional[str] = None
+
+class TaskEvidenceResponse(BaseModel):
     id: UUID
-    status: str
-    created_at: datetime
-    updated_at: datetime
+    task_id: UUID
+    file_name: str
+    file_path: str
+    uploaded_by: UUID
+    uploaded_at: datetime
+    notes: Optional[str] = None
 
     class Config:
         from_attributes = True
 
-class TaskEvidenceBase(BaseModel):
-    file_name: str
-    file_path: str
-    metadata_info: Dict[str, Any] = {}
-
-class TaskEvidenceCreate(TaskEvidenceBase):
-    task_id: UUID
-    uploaded_by: UUID
-
-class TaskEvidenceResponse(TaskEvidenceBase):
+class TaskResponse(TaskBase):
     id: UUID
-    task_id: UUID
-    uploaded_by: UUID
-    uploaded_at: datetime
+    assignment_reasoning: Dict[str, str] = {}
+    comments: List[Dict[str, Any]] = []
+    created_at: datetime
+    updated_at: datetime
+    # Joined attributes for detailed UI rendering
+    regulation_title: Optional[str] = None
+    regulation_summary: Optional[str] = None
+    regulator: Optional[str] = None
+    regulation_ref: Optional[str] = None
+    regulation_effective_date: Optional[date] = None
+    regulation_penalty: Optional[str] = None
+    map_outcome: Optional[str] = None
+    map_verification: Optional[str] = None
+    department_name: Optional[str] = None
+    evidences: List[TaskEvidenceResponse] = []
 
     class Config:
         from_attributes = True
